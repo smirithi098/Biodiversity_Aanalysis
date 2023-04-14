@@ -5,6 +5,7 @@ library(tidyr)
 library(stringr)
 library(AICcmodavg)
 library(gridExtra)
+library(reshape2)
 
 # set the working directory
 setwd("S:/Statistics for Data Science/MA334_Data analysis and Statistics with R/Assignment/MA334_2212098/Biodiversity_Aanalysis")
@@ -36,6 +37,66 @@ my_data %>%
 mean_species_7 <- rowMeans(my_data[1:7], na.rm = TRUE)
 my_data$eco_status_7 <- mean_species_7
 
+# Data Exploration
+
+# Exploration - 1: Correlation between the species
+
+# compute correlation between all the 7 species
+cor_species <- melt(cor(my_data[1:7], my_data[1:7]))
+
+# plot the heatmap
+cor_species %>%
+  ggplot(aes(x=Var1, y=Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(high = "#C85C8E", low = "#FFBABA") +
+  labs(title = "Correlation between 7 species" , x = "Species", y ="Species") +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank())
+
+# Exploration - 2: Mean distribution of original 11 species and
+# allocated 7 species across both periods
+
+# plot for the mean of 7 species
+plot_7 <- my_data %>%
+  ggplot(aes(x=eco_status_7)) +
+  geom_histogram(bins = 45,
+                 aes(y=after_stat(density)),
+                 colour = "black", fill = "lightgrey") +
+  geom_vline(aes(xintercept=mean(eco_status_7)), 
+             linetype = "dashed", size = 0.6) +
+  geom_density(lwd=0.8, fill = "#FF6666", alpha = 0.18) +
+  facet_wrap(vars(period), scales = "free", ncol = 2) +
+  labs(title = "Mean distribution of 7 species for both periods",
+       x = "Mean of 7 species") +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()
+  )
+
+# plot for the mean of 11 species
+plot_11 <- my_data %>%
+  ggplot(aes(x=ecologicalStatus)) +
+  geom_histogram(bins = 45,
+                 aes(y=after_stat(density)),
+                 colour = "black", fill = "lightgrey") +
+  geom_vline(aes(xintercept=mean(ecologicalStatus)), 
+             linetype = "dashed", size = 0.6) +
+  geom_density(lwd=0.8, fill = "#FF6666", alpha = 0.18) +
+  facet_wrap(vars(period), scales = "free", ncol = 2) +
+  labs(title = "Mean distribution of 11 species for both periods",
+       x = "Mean of 11 species") +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()
+  )
+
+# arrange both plots to compare the distributions
+grid.arrange(plot_7, plot_11, nrow = 2)
+
+
+# Hypothesis testing
+
 # check the correlation of all 7 species with the computed mean eco score
 cor(my_data[1:7], my_data$eco_status_7)
 
@@ -53,6 +114,8 @@ cor(mean_rem_species, mean_species_7)
 my_data$eco_status_priority <- mean_priority_species
 my_data$eco_status_rem <- mean_rem_species
 
+# Hypothesis test - 1
+
 priority_species_eco_change <- my_data %>%
   group_by(Easting, Northing, period) %>%
   summarise(species_mean = mean(eco_status_priority), .groups = 'drop') %>%
@@ -60,51 +123,37 @@ priority_species_eco_change <- my_data %>%
   mutate(difference_eco = Y00 - Y70) %>%
   arrange(difference_eco)
 
-# low_eco_status_priority_species <- priority_species_eco_change %>%
-#   filter(difference_eco <= 0) %>%
-#   count()
-# 
-# high_eco_status_priority_species <- priority_species_eco_change %>%
-#   filter(difference_eco > 0) %>%
-#   count()
-# 
-# 
-# rem_species_eco_change <- my_data %>%
-#   group_by(Easting, Northing, period) %>%
-#   summarise(species_mean = mean(eco_status_rem), .groups = 'drop') %>%
-#   pivot_wider(names_from = period, values_from = species_mean, values_fill = 0) %>%
-#   mutate(difference_eco = Y00 - Y70) %>%
-#   arrange(difference_eco)
-
-# low_eco_status_rem_species <- rem_species_eco_change %>%
-#   filter(difference_eco <= 0) %>%
-#   count()
-# 
-# high_eco_status_rem_species <- rem_species_eco_change %>%
-#   filter(difference_eco > 0) %>%
-#   count()
-
-all_species_eco_change <- my_data %>%
-  group_by(dominantLandClass, period) %>%
-  summarise(species_mean = mean(eco_status_rem), .groups = 'drop') %>%
-  pivot_wider(names_from = period, values_from = species_mean, values_fill = 0) %>%
-  mutate(difference_eco = Y00 - Y70) %>%
-  arrange(difference_eco)
-
-low_eco_status_all_species <- (all_species_eco_change %>%
-  filter(difference_eco <= 0) %>%
-  count())/nrow(all_species_eco_change)
-
-high_eco_status_all_species <- (all_species_eco_change %>%
-  filter(difference_eco > 0) %>%
-  count())/nrow(all_species_eco_change)
-
-t.test(all_species_eco_change$difference_eco,
-       alternative = "less",
-       mu = 0,
-       conf.level = 0.99)
 
 t.test(priority_species_eco_change$difference_eco,
+       alternative = "greater",
+       mu = 0,
+       conf.level = 0.95)
+
+my_data %>%
+  filter(str_detect(dominantLandClass, 'e')) %>%
+  ggplot(aes(x=Easting, y=eco_status_7, colour = period)) +
+  geom_point(show.legend = F) +
+  geom_smooth(method = lm, se=F, col = "darkgrey") +
+  facet_wrap(vars(dominantLandClass), ncol = 3)
+
+# Hypothesis test - 2
+
+england_species_7 <- my_data %>%
+  filter(str_detect(dominantLandClass, 'e')) %>%
+  group_by(dominantLandClass, period) %>%
+  summarise(species_mean=mean(eco_status_7), .groups = 'drop') %>%
+  pivot_wider(names_from = period, values_from = species_mean, values_fill = 0) %>%
+  mutate(diff=Y00-Y70) %>% print(n=21)
+
+england_species_11 <- my_data %>%
+  filter(str_detect(dominantLandClass, 'e')) %>%
+  group_by(dominantLandClass, period) %>%
+  summarise(species_mean=mean(ecologicalStatus), .groups = 'drop') %>%
+  pivot_wider(names_from = period, values_from = species_mean, values_fill = 0) %>%
+  mutate(diff=Y00-Y70) %>% print(n=21)
+
+t.test(england_species_7$diff,
+       england_species_11$diff,
        alternative = "greater",
        mu = 0,
        conf.level = 0.95)
@@ -350,3 +399,17 @@ model_names <- c('7 species', '5 species', '4 species', '3 species', '2 species'
 aictab(cand.set = models, modnames = model_names) 
 # the mlr model with all 7 species as predictors has the lowest AIC value 
 # thereby the best fit model to predict BD4
+
+# Open analysis
+
+my_data %>%
+  filter(period=="Y70") %>%
+  group_by(dominantLandClass) %>%
+  ggplot(aes(x=eco_status_7)) +
+  geom_histogram(aes(y=after_stat(density)), colour = "black", fill = "lightgrey") +
+  geom_density(lwd=0.8, fill = "#FF6666", alpha = 0.18) +
+  facet_wrap(vars(dominantLandClass), scales = "free") +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()
+  )
