@@ -402,6 +402,7 @@ aictab(cand.set = models, modnames = model_names)
 
 # Open analysis
 
+<<<<<<< HEAD
 my_data <- my_data %>% mutate(mean_diff = eco_status_7-ecologicalStatus,
                               location = data_v3$Location)
 
@@ -494,3 +495,16 @@ mean_species_diff %>%
         panel.background = element_blank(), 
         axis.line = element_line(colour = "black"))
 
+=======
+my_data %>%
+  filter(period=="Y70") %>%
+  group_by(dominantLandClass) %>%
+  ggplot(aes(x=eco_status_7)) +
+  geom_histogram(aes(y=after_stat(density)), colour = "black", fill = "lightgrey") +
+  geom_density(lwd=0.8, fill = "#FF6666", alpha = 0.18) +
+  facet_wrap(vars(dominantLandClass), scales = "free") +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()
+  )
+>>>>>>> 06219e1ea32bdddb9d781e7ff3ec2e9a4266888b
