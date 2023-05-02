@@ -1,4 +1,5 @@
 # Biodiversity_Aanalysis
+Link to project: [Project on kaggle](https://www.kaggle.com/code/smirithi/proportional-species-richness-on-biodiversity/report)
 
 ## Project Outline
 The aim of the project was to analyse the growth/descent trends of different species across various locations which was subdivided into land zones based on the climatic conditions for 2 time periods namely, 1970-1990 & 2000-2013. <br>
