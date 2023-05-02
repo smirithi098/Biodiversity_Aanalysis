@@ -14,7 +14,7 @@ setwd("S:/Statistics for Data Science/MA334_Data analysis and Statistics with R/
 data_v3 <- read.csv("proportional_species_richness_V3.csv")
 
 # get the count of missing values in each column
-(sapply(data_v3, function(x) sum(is.na(x))))
+sapply(data_v3, function(x) sum(is.na(x)))
 
 # convert categorical variable to factor
 data_v3$dominantLandClass <- as.factor(data_v3$dominantLandClass)
@@ -48,7 +48,7 @@ cor_species <- melt(cor(my_data[1:7], my_data[1:7]))
 cor_species %>%
   ggplot(aes(x=Var1, y=Var2, fill = value)) +
   geom_tile() +
-  scale_fill_gradient(high = "#C85C8E", low = "#FFBABA") +
+  scale_fill_gradient(high = "aquamarine4", low = "aquamarine") +
   labs(title = "Correlation between 7 species" , x = "Species", y ="Species") +
   theme(panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
@@ -62,10 +62,10 @@ plot_7 <- my_data %>%
   ggplot(aes(x=eco_status_7)) +
   geom_histogram(bins = 45,
                  aes(y=after_stat(density)),
-                 colour = "black", fill = "lightgrey") +
+                 fill = "lightseagreen", alpha=0.5) +
   geom_vline(aes(xintercept=mean(eco_status_7)), 
              linetype = "dashed", size = 0.6) +
-  geom_density(lwd=0.8, fill = "#FF6666", alpha = 0.18) +
+  geom_density(lwd=0.5, fill = "lightseagreen", alpha = 0.18) +
   facet_wrap(vars(period), scales = "free", ncol = 2) +
   labs(title = "Mean distribution of 7 species for both periods",
        x = "Mean of 7 species") +
@@ -79,10 +79,10 @@ plot_11 <- my_data %>%
   ggplot(aes(x=ecologicalStatus)) +
   geom_histogram(bins = 45,
                  aes(y=after_stat(density)),
-                 colour = "black", fill = "lightgrey") +
+                 fill = "deepskyblue2", alpha=0.5) +
   geom_vline(aes(xintercept=mean(ecologicalStatus)), 
              linetype = "dashed", size = 0.6) +
-  geom_density(lwd=0.8, fill = "#FF6666", alpha = 0.18) +
+  geom_density(lwd=0.5, fill = "deepskyblue2", alpha = 0.18) +
   facet_wrap(vars(period), scales = "free", ncol = 2) +
   labs(title = "Mean distribution of 11 species for both periods",
        x = "Mean of 11 species") +
@@ -111,11 +111,14 @@ mean_rem_species <- rowMeans(my_data[c(2,7)], na.rm = T)
 cor(mean_priority_species, mean_species_7)
 cor(mean_rem_species, mean_species_7)
 
+# add the calculated means to the dataset
 my_data$eco_status_priority <- mean_priority_species
 my_data$eco_status_rem <- mean_rem_species
 
 # Hypothesis test - 1
 
+# calculate the mean difference of the high correlation species between
+# Y00 and Y70 across all hectads
 priority_species_eco_change <- my_data %>%
   group_by(Easting, Northing, period) %>%
   summarise(species_mean = mean(eco_status_priority), .groups = 'drop') %>%
@@ -123,21 +126,16 @@ priority_species_eco_change <- my_data %>%
   mutate(difference_eco = Y00 - Y70) %>%
   arrange(difference_eco)
 
-
+# perform one-tail test with alpha=5%
 t.test(priority_species_eco_change$difference_eco,
        alternative = "greater",
        mu = 0,
        conf.level = 0.95)
 
-my_data %>%
-  filter(str_detect(dominantLandClass, 'e')) %>%
-  ggplot(aes(x=Easting, y=eco_status_7, colour = period)) +
-  geom_point(show.legend = F) +
-  geom_smooth(method = lm, se=F, col = "darkgrey") +
-  facet_wrap(vars(dominantLandClass), ncol = 3)
-
 # Hypothesis test - 2
 
+# compute the mean difference of the 7 groups of species between Y00 and Y70 
+# across all land zones in England
 england_species_7 <- my_data %>%
   filter(str_detect(dominantLandClass, 'e')) %>%
   group_by(dominantLandClass, period) %>%
@@ -145,6 +143,8 @@ england_species_7 <- my_data %>%
   pivot_wider(names_from = period, values_from = species_mean, values_fill = 0) %>%
   mutate(diff=Y00-Y70) %>% print(n=21)
 
+# compute the mean difference of the all 11 groups of species between Y00 and Y70 
+# across all land zones in England
 england_species_11 <- my_data %>%
   filter(str_detect(dominantLandClass, 'e')) %>%
   group_by(dominantLandClass, period) %>%
@@ -152,6 +152,7 @@ england_species_11 <- my_data %>%
   pivot_wider(names_from = period, values_from = species_mean, values_fill = 0) %>%
   mutate(diff=Y00-Y70) %>% print(n=21)
 
+# perform 2-tail test with alpha = 0.05
 t.test(england_species_7$diff,
        england_species_11$diff,
        alternative = "greater",
@@ -210,10 +211,18 @@ period_00 %>%
   ggplot(aes(x=eco_status_7, y=ecologicalStatus)) +
   geom_point() +
   geom_smooth(method = lm, col = "red", se = F) +
-  theme_bw()
+  theme_bw() +
+  labs(title = "Correlation betwwen BD7 & BD11 for period Y00",
+       x = "Ecological score of 7 groups (BD7)",
+       y = "Ecological score of 11 groups (BD11)")
 
 # fit the linear regression model
 lm_model_00 <- lm(period_00$ecologicalStatus~period_00$eco_status_7)
+
+# get the summary of the regression model
+summary(lm_model_00)
+
+# combine the actual and predicted values in a data frame
 lm_model_00_df <- data.frame(predicted=fitted(lm_model_00), 
                              observed=period_00$ecologicalStatus)
 
@@ -233,10 +242,18 @@ period_70 %>%
   ggplot(aes(x=eco_status_7, y=ecologicalStatus)) +
   geom_point() +
   geom_smooth(method = lm, col = "red", se = F) +
-  theme_bw()
+  theme_bw() +
+  labs(title = "Correlation betwwen BD7 & BD11 for period Y70",
+       x = "Ecological score of 7 groups (BD7)",
+       y = "Ecological score of 11 groups (BD11)")
 
 # fit the linear regression model
 lm_model_70 <- lm(period_70$ecologicalStatus~period_70$eco_status_7)
+
+# get the summary of the regression model
+summary(lm_model_70)
+
+# combine the actual and predicted values in a data frame
 lm_model_70_df <- data.frame(predicted=fitted(lm_model_70), 
                              observed=period_70$ecologicalStatus)
 
@@ -402,13 +419,14 @@ aictab(cand.set = models, modnames = model_names)
 
 # Open analysis
 
-<<<<<<< HEAD
+# calculate the diff between BD7 and BD11
 my_data <- my_data %>% mutate(mean_diff = eco_status_7-ecologicalStatus,
                               location = data_v3$Location)
 
+# get the mean values of the difference calculated at quantile 0.2, 0.4, 0.6, 0.8 and 1
 quantiles <- quantile(my_data$mean_diff, probs = seq(0,1,0.2))
-str(quantiles)
 
+# get the locations where 80th percentile < mean difference < 20th percentile
 mean_species_diff <- rbind(my_data %>%
         filter( mean_diff < quantiles[2]),
       my_data %>%
@@ -416,6 +434,8 @@ mean_species_diff <- rbind(my_data %>%
 
 # Wales
 
+# plot the locations per land zone with the best and worst species richness in Wales
+# for both periods
 mean_species_diff %>%
   group_by(dominantLandClass, period) %>%
   arrange(mean_diff, .by_group = T) %>%
@@ -436,13 +456,12 @@ mean_species_diff %>%
        x = "Location", y = "Mean Species Richness") +
   coord_flip() +
   facet_wrap(vars(dominantLandClass), scales = "free_y") +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank(), 
-        axis.line = element_line(colour = "black"))
+  theme_classic()
 
 # Scotland
 
+# plot the locations per land zone with the best and worst species richness in Scotland
+# for both periods
 mean_species_diff %>%
   group_by(dominantLandClass, period) %>%
   arrange(mean_diff, .by_group = T) %>%
@@ -463,19 +482,18 @@ mean_species_diff %>%
        x = "Location", y = "Mean Species Richness") +
   coord_flip() +
   facet_wrap(vars(dominantLandClass), scales = "free_y") +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank(), 
-        axis.line = element_line(colour = "black"))
+  theme_classic()
 
 # England
 
+# plot the locations per land zone with the best and worst species richness in England
+# for both periods
 mean_species_diff %>%
   group_by(dominantLandClass, period) %>%
   arrange(mean_diff, .by_group = T) %>%
   top_n(5) %>%
   select(c("dominantLandClass", "mean_diff", "location", "period")) %>%
-  filter(str_detect(dominantLandClass, "s")) %>%
+  filter(str_detect(dominantLandClass, "e")) %>%
   ggplot(aes(x = reorder(location, mean_diff), y = mean_diff)) +
   geom_bar(width=0.6, stat = "identity", position = "dodge",
            show.legend = F,
@@ -490,21 +508,4 @@ mean_species_diff %>%
        x = "Location", y = "Mean Species Richness") +
   coord_flip() +
   facet_wrap(vars(dominantLandClass), scales = "free_y") +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank(), 
-        axis.line = element_line(colour = "black"))
-
-=======
-my_data %>%
-  filter(period=="Y70") %>%
-  group_by(dominantLandClass) %>%
-  ggplot(aes(x=eco_status_7)) +
-  geom_histogram(aes(y=after_stat(density)), colour = "black", fill = "lightgrey") +
-  geom_density(lwd=0.8, fill = "#FF6666", alpha = 0.18) +
-  facet_wrap(vars(dominantLandClass), scales = "free") +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank()
-  )
->>>>>>> 06219e1ea32bdddb9d781e7ff3ec2e9a4266888b
+  theme_classic()
